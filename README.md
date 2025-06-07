@@ -9,55 +9,50 @@
 - دعم إرفاق الملفات (صور، مستندات، ملفات PDF)
 - إرسال إيميل تأكيد للمستخدم
 - إرسال إيميل إشعار للمسؤول
-- حفظ الطلبات في قاعدة بيانات Firestore
-- استضافة على Firebase Hosting
+- حفظ الطلبات في قاعدة بيانات
+- استضافة الواجهة الأمامية على GitHub Pages
+- استضافة الخلفية على Render.com (مجاناً)
 
-## متطلبات التشغيل
+## طريقة النشر
 
-- حساب Firebase (تم إعداده بالفعل: support-100)
-- Node.js (الإصدار 16 أو أحدث)
-- Firebase CLI
+### 1. نشر الخلفية (Backend) على Render.com
 
-## طريقة النشر على Firebase
+1. قم بإنشاء حساب على [Render.com](https://render.com/) (يمكنك استخدام حساب GitHub)
+2. انقر على "New" ثم اختر "Web Service"
+3. اختر "Connect a repository" واختر مستودع GitHub الخاص بك
+4. املأ التفاصيل:
+   - Name: support-system-api
+   - Environment: Node
+   - Build Command: npm install
+   - Start Command: node server.js
+5. انتقل إلى قسم "Environment Variables" وأضف المتغيرات:
+   - EMAIL_USER: عنوان البريد الإلكتروني الخاص بك
+   - EMAIL_PASS: كلمة مرور التطبيق
+   - EMAIL_TO: عنوان البريد الإلكتروني الذي ستستلم عليه الإشعارات
+   - SMTP_HOST: smtp.gmail.com
+   - SMTP_PORT: 587
+   - SMTP_SECURE: false
+6. انقر على "Create Web Service"
 
-1. قم بتثبيت Firebase CLI:
+### 2. نشر الواجهة الأمامية (Frontend) على GitHub Pages
+
+1. قم بإنشاء مستودع GitHub جديد
+2. قم برفع المشروع إلى GitHub:
    ```
-   npm install -g firebase-tools
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/username/support-system.git
+   git push -u origin main
    ```
+3. انتقل إلى مستودعك على GitHub
+4. انقر على "Settings"
+5. انتقل إلى قسم "Pages" في الشريط الجانبي
+6. في قسم "Source"، اختر "main" كفرع و "docs" كمجلد
+7. انقر على "Save"
 
-2. قم بتسجيل الدخول إلى Firebase:
-   ```
-   firebase login
-   ```
-
-3. قم بتثبيت التبعيات:
-   ```
-   cd functions
-   npm install
-   cd ..
-   ```
-
-4. قم بنشر المشروع على Firebase:
-   ```
-   firebase deploy
-   ```
-
-5. بعد النشر، ستتمكن من الوصول إلى موقع الويب الخاص بك على:
-   ```
-   https://support-100.web.app
-   ```
-
-## إعداد متغيرات البيئة (اختياري)
-
-يمكنك إعداد متغيرات البيئة لبيانات البريد الإلكتروني من لوحة تحكم Firebase:
-
-1. انتقل إلى [لوحة تحكم Firebase](https://console.firebase.google.com/project/support-100)
-2. اختر "Functions" من القائمة الجانبية
-3. انقر على "Settings" ثم "Environment variables"
-4. أضف المتغيرات التالية:
-   - `EMAIL_USER`: عنوان البريد الإلكتروني الخاص بك
-   - `EMAIL_PASS`: كلمة مرور التطبيق (راجع القسم التالي)
-   - `EMAIL_TO`: عنوان البريد الإلكتروني الذي ستستلم عليه الإشعارات
+بعد بضع دقائق، ستكون واجهتك الأمامية متاحة على عنوان مثل:
+`https://username.github.io/support-system/`
 
 ## إعداد كلمة مرور التطبيق في Gmail
 
@@ -74,6 +69,6 @@
 
 ## ملاحظات هامة
 
-- لا تستخدم كلمة المرور العادية لحساب Gmail، بل استخدم كلمة مرور التطبيق كما هو موضح أعلاه
-- يتم حفظ جميع الطلبات في قاعدة بيانات Firestore
-- يمكن تخصيص النظام بسهولة عن طريق تعديل ملفات HTML و CSS
+- خدمة Render المجانية تدخل في وضع السكون بعد 15 دقيقة من عدم النشاط، مما يعني أن أول طلب قد يستغرق وقتاً أطول
+- تأكد من تحديث عنوان API في ملف `docs/script.js` بعنوان URL الفعلي الذي ستحصل عليه من Render
+- في حالة فشل الاتصال بالخادم، يمكن للمستخدم حفظ الطلب محلياً في المتصفح
