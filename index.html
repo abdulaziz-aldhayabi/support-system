@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الدعم الفني</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-headset"></i>
+                <h2>مركز الدعم</h2>
+            </div>
+        </header>
+        
+        <div class="container">
+            <div class="form-header">
+                <h1>طلب المساعدة</h1>
+                <p>يرجى ملء النموذج أدناه وسنقوم بالرد عليك في أقرب وقت ممكن</p>
+            </div>
+            
+            <form id="supportForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name"><i class="fas fa-user"></i> الاسم الكامل</label>
+                        <input type="text" id="name" name="name" placeholder="أدخل اسمك الكامل" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                        <input type="email" id="email" name="email" placeholder="example@domain.com" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone"><i class="fas fa-phone"></i> رقم الهاتف</label>
+                    <input type="tel" id="phone" name="phone" placeholder="05xxxxxxxx" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="category"><i class="fas fa-tag"></i> نوع المشكلة</label>
+                    <select id="category" name="category" required>
+                        <option value="" disabled selected>اختر نوع المشكلة</option>
+                        <option value="technical">مشكلة تقنية</option>
+                        <option value="account">مشكلة في الحساب</option>
+                        <option value="billing">مشكلة في الفواتير</option>
+                        <option value="other">أخرى</option>
+                    </select>npm install
+
+                </div>
+                
+                <div class="form-group">
+                    <label for="subject"><i class="fas fa-heading"></i> الموضوع</label>
+                    <input type="text" id="subject" name="subject" placeholder="عنوان موجز للمشكلة" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="message"><i class="fas fa-comment-alt"></i> تفاصيل المشكلة</label>
+                    <textarea id="message" name="message" rows="5" placeholder="يرجى وصف المشكلة بالتفصيل..." required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="attachment"><i class="fas fa-paperclip"></i> إرفاق ملف (اختياري)</label>
+                    <input type="file" id="attachment" name="attachment">
+                    <small>الحد الأقصى لحجم الملف: 5 ميجابايت</small>
+                </div>
+                
+                <div class="form-group terms">
+                    <input type="checkbox" id="terms" name="terms" required>
+                    <label for="terms">أوافق على <a href="#" class="terms-link">شروط الخدمة</a> وسياسة الخصوصية</label>
+                </div>
+                
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-paper-plane"></i> إرسال الطلب
+                </button>
+            </form>
+            
+            <div id="status" class="status"></div>
+        </div>
+        
+        <footer>
+            <p>جميع الحقوق محفوظة &copy; <span id="year"></span> - نظام الدعم الفني</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
