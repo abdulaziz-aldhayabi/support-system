@@ -3,43 +3,10 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
 const path = require('path');
-const multer = require('multer');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// إنشاء مجلد للملفات المرفقة إذا لم يكن موجودًا
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
-
-// تكوين تخزين الملفات المرفقة
-const storage = multer.diskStorage({
-    destination: function(req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function(req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + file.originalname);
-    }
-});
-
-// تكوين حدود الملفات المرفقة
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5 ميجابايت
-    fileFilter: function(req, file, cb) {
-        // السماح بأنواع الملفات الشائعة فقط
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        if (allowedTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error('نوع الملف غير مدعوم'));
-        }
-    }
-});
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
@@ -51,18 +18,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
 
-// تكوين Nodemailer للإرسال المباشر
+// تكوين Nodemailer
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
+    service: 'gmail',
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.EMAIL_USER || 'abdulaziz.aldhayabi@gmail.com',
+        pass: process.env.EMAIL_PASS || 'bkio donp pasq kskb'
     },
-    tls: {
-        rejectUnauthorized: false
-    }
+    debug: true,
+    logger: true
 });
 
 // التحقق من اتصال البريد الإلكتروني
@@ -70,17 +34,20 @@ transporter.verify(function(error, success) {
     if (error) {
         console.error('خطأ في تكوين البريد الإلكتروني:', error);
         console.error('تأكد من استخدام كلمة مرور التطبيق لحساب Gmail وليس كلمة المرور العادية');
-        console.error('يمكنك إنشاء كلمة مرور التطبيق من: https://myaccount.google.com/apppasswords');
     } else {
         console.log('الخادم جاهز لإرسال رسائل البريد الإلكتروني');
     }
 });
 
-// تم نقل هذا الكود إلى داخل الوعد (Promise) الخاص بإنشاء حساب الاختبار
+// API endpoint لاختبار الخادم
+app.get('/', (req, res) => {
+    res.send('نظام الدعم الفني يعمل بنجاح!');
+});
 
 // API endpoint لإرسال النموذج
-app.post('/api/submit', async (req, res) => {
+app.post('/submit', async (req, res) => {
     try {
+        console.log('تم استلام طلب جديد:', req.body);
         const { name, email, phone, category, subject, message } = req.body;
         
         // التحقق من البيانات
@@ -122,10 +89,15 @@ app.post('/api/submit', async (req, res) => {
         
         console.log(`تم حفظ طلب جديد برقم: ${ticketId}`);
         
+        // طباعة معلومات تكوين البريد الإلكتروني للتصحيح
+        console.log('معلومات تكوين البريد الإلكتروني:');
+        console.log('- EMAIL_USER:', process.env.EMAIL_USER || 'abdulaziz.aldhayabi@gmail.com');
+        console.log('- EMAIL_TO:', process.env.EMAIL_TO || 'abdulaziz.aldhayabi@gmail.com');
+        
         // إرسال إيميل للمسؤول
         const adminMailOptions = {
-            from: `"نظام الدعم الفني" <${process.env.EMAIL_USER}>`,
-            to: process.env.EMAIL_TO,
+            from: `"نظام الدعم الفني" <${process.env.EMAIL_USER || 'abdulaziz.aldhayabi@gmail.com'}>`,
+            to: process.env.EMAIL_TO || 'abdulaziz.aldhayabi@gmail.com',
             subject: `طلب دعم فني جديد: ${subject}`,
             html: `
                 <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -145,7 +117,7 @@ app.post('/api/submit', async (req, res) => {
         
         // إرسال إيميل تأكيد للمستخدم
         const userMailOptions = {
-            from: `"نظام الدعم الفني" <${process.env.EMAIL_USER}>`,
+            from: `"نظام الدعم الفني" <${process.env.EMAIL_USER || 'abdulaziz.aldhayabi@gmail.com'}>`,
             to: email,
             subject: `تأكيد استلام طلب الدعم الفني: ${subject}`,
             html: `
@@ -165,12 +137,15 @@ app.post('/api/submit', async (req, res) => {
         };
         
         try {
-            // إرسال الإيميلات
-            const adminInfo = await transporter.sendMail(adminMailOptions);
-            const userInfo = await transporter.sendMail(userMailOptions);
+            console.log('جاري إرسال الإيميلات...');
             
-            console.log('تم إرسال إيميل للمسؤول:', adminInfo.messageId);
-            console.log('تم إرسال إيميل للمستخدم:', userInfo.messageId);
+            // إرسال إيميل للمسؤول
+            const adminInfo = await transporter.sendMail(adminMailOptions);
+            console.log('تم إرسال إيميل المسؤول بنجاح:', adminInfo.messageId);
+            
+            // إرسال إيميل للمستخدم
+            const userInfo = await transporter.sendMail(userMailOptions);
+            console.log('تم إرسال إيميل المستخدم بنجاح:', userInfo.messageId);
             
             res.status(200).json({ 
                 success: true, 
@@ -178,7 +153,8 @@ app.post('/api/submit', async (req, res) => {
                 ticketId
             });
         } catch (emailError) {
-            console.error('خطأ في إرسال البريد الإلكتروني:', emailError);
+            console.error('خطأ مفصل في إرسال البريد الإلكتروني:', emailError);
+            
             // حتى لو فشل إرسال البريد الإلكتروني، نعتبر العملية ناجحة لأننا حفظنا البيانات
             res.status(200).json({ 
                 success: true, 
@@ -187,34 +163,9 @@ app.post('/api/submit', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error processing request:', error);
+        console.error('خطأ عام في معالجة الطلب:', error);
         res.status(500).json({ success: false, message: 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مرة أخرى.' });
     }
-});
-
-// معالجة الملفات المرفقة
-app.post('/api/upload', upload.single('attachment'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ success: false, message: 'لم يتم تحميل أي ملف' });
-    }
-    
-    res.status(200).json({ 
-        success: true, 
-        message: 'تم رفع الملف بنجاح',
-        file: {
-            filename: req.file.filename,
-            path: req.file.path
-        }
-    });
-});
-
-// معالجة الأخطاء
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ 
-        success: false, 
-        message: err.message || 'حدث خطأ في الخادم'
-    });
 });
 
 // تشغيل الخادم

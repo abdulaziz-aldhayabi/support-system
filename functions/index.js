@@ -15,21 +15,24 @@ app.use(express.json());
 
 // تكوين Nodemailer
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
+    service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER || 'abdulaziz.aldhayabi@gmail.com',
         pass: process.env.EMAIL_PASS || 'bkio donp pasq kskb'
     },
-    tls: {
-        rejectUnauthorized: false
-    }
+    debug: true,
+    logger: true
+});
+
+// API endpoint لاختبار الخادم
+app.get('/', (req, res) => {
+    res.send('نظام الدعم الفني يعمل بنجاح!');
 });
 
 // API endpoint لإرسال النموذج
 app.post('/submit', async (req, res) => {
     try {
+        console.log('تم استلام طلب جديد:', req.body);
         const { name, email, phone, category, subject, message } = req.body;
         
         // التحقق من البيانات
@@ -59,6 +62,11 @@ app.post('/submit', async (req, res) => {
         });
         
         console.log(`تم حفظ طلب جديد برقم: ${ticketId}`);
+        
+        // طباعة معلومات تكوين البريد الإلكتروني للتصحيح
+        console.log('معلومات تكوين البريد الإلكتروني:');
+        console.log('- EMAIL_USER:', process.env.EMAIL_USER || 'abdulaziz.aldhayabi@gmail.com');
+        console.log('- EMAIL_TO:', process.env.EMAIL_TO || 'abdulaziz.aldhayabi@gmail.com');
         
         // إرسال إيميل للمسؤول
         const adminMailOptions = {
@@ -103,11 +111,15 @@ app.post('/submit', async (req, res) => {
         };
         
         try {
-            // إرسال الإيميلات
-            await transporter.sendMail(adminMailOptions);
-            await transporter.sendMail(userMailOptions);
+            console.log('جاري إرسال الإيميلات...');
             
-            console.log('تم إرسال الإيميلات بنجاح');
+            // إرسال إيميل للمسؤول
+            const adminInfo = await transporter.sendMail(adminMailOptions);
+            console.log('تم إرسال إيميل المسؤول بنجاح:', adminInfo.messageId);
+            
+            // إرسال إيميل للمستخدم
+            const userInfo = await transporter.sendMail(userMailOptions);
+            console.log('تم إرسال إيميل المستخدم بنجاح:', userInfo.messageId);
             
             res.status(200).json({ 
                 success: true, 
@@ -115,7 +127,8 @@ app.post('/submit', async (req, res) => {
                 ticketId
             });
         } catch (emailError) {
-            console.error('خطأ في إرسال البريد الإلكتروني:', emailError);
+            console.error('خطأ مفصل في إرسال البريد الإلكتروني:', emailError);
+            
             // حتى لو فشل إرسال البريد الإلكتروني، نعتبر العملية ناجحة لأننا حفظنا البيانات
             res.status(200).json({ 
                 success: true, 
@@ -124,7 +137,7 @@ app.post('/submit', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error processing request:', error);
+        console.error('خطأ عام في معالجة الطلب:', error);
         res.status(500).json({ success: false, message: 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مرة أخرى.' });
     }
 });

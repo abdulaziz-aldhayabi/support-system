@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // تعيين السنة الحالية في التذييل
     yearSpan.textContent = new Date().getFullYear();
     
-    // تعيين عنوان API
+    // تعيين عنوان API - تأكد من تحديث هذا العنوان بعنوان Render الفعلي
     const API_URL = 'https://support-system-api.onrender.com';
     
     // التحقق من صحة رقم الهاتف
@@ -50,8 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // إرسال البيانات إلى الخادم
-        fetch(`${API_URL}/api/submit`, {
+        // إرسال البيانات إلى الخادم - تأكد من استخدام المسار الصحيح
+        fetch(`${API_URL}/submit`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
