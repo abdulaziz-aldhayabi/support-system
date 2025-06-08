@@ -4,9 +4,30 @@ const nodemailer = require('nodemailer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// تكوين تخزين الملفات المرفقة
+const storage = multer.diskStorage({
+    destination: function(req, file, cb) {
+        const uploadsDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir);
+        }
+        cb(null, uploadsDir);
+    },
+    filename: function(req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + '-' + file.originalname);
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
 
 // Middleware
 app.use(cors({
@@ -45,7 +66,7 @@ app.get('/', (req, res) => {
 });
 
 // API endpoint لإرسال النموذج
-app.post('/submit', async (req, res) => {
+app.post('/submit', upload.single('attachment'), async (req, res) => {
     try {
         console.log('تم استلام طلب جديد:', req.body);
         const { name, email, phone, category, subject, message } = req.body;
@@ -74,6 +95,15 @@ app.post('/submit', async (req, res) => {
             date: new Date().toLocaleString('ar-SA')
         };
         
+        // إضافة معلومات الملف المرفق إذا وجد
+        if (req.file) {
+            ticketData.attachment = {
+                filename: req.file.originalname,
+                path: req.file.path,
+                size: req.file.size
+            };
+        }
+        
         // إنشاء مجلد للطلبات إذا لم يكن موجودًا
         const ticketsDir = path.join(__dirname, 'tickets');
         if (!fs.existsSync(ticketsDir)) {
@@ -94,6 +124,16 @@ app.post('/submit', async (req, res) => {
         console.log('- EMAIL_USER:', process.env.EMAIL_USER || 'abdulaziz.aldhayabi@gmail.com');
         console.log('- EMAIL_TO:', process.env.EMAIL_TO || 'abdulaziz.aldhayabi@gmail.com');
         
+        // إعداد المرفقات للإيميل
+        let attachments = [];
+        if (req.file) {
+            attachments.push({
+                filename: req.file.originalname,
+                path: req.file.path
+            });
+            console.log('تم إرفاق ملف:', req.file.originalname);
+        }
+        
         // إرسال إيميل للمسؤول
         const adminMailOptions = {
             from: `"نظام الدعم الفني" <${process.env.EMAIL_USER || 'abdulaziz.aldhayabi@gmail.com'}>`,
@@ -110,9 +150,11 @@ app.post('/submit', async (req, res) => {
                     <p><strong>الموضوع:</strong> ${subject}</p>
                     <p><strong>الرسالة:</strong></p>
                     <p>${message.replace(/\n/g, '<br>')}</p>
+                    ${req.file ? `<p><strong>مرفق:</strong> ${req.file.originalname}</p>` : ''}
                 </div>
             `,
-            replyTo: email
+            replyTo: email,
+            attachments: attachments
         };
         
         // إرسال إيميل تأكيد للمستخدم
@@ -129,11 +171,13 @@ app.post('/submit', async (req, res) => {
                         <p><strong>رقم الطلب:</strong> #${ticketId}</p>
                         <p><strong>الموضوع:</strong> ${subject}</p>
                         <p><strong>تاريخ الاستلام:</strong> ${new Date().toLocaleString('ar-SA')}</p>
+                        ${req.file ? `<p><strong>مرفق:</strong> ${req.file.originalname}</p>` : ''}
                     </div>
                     <p>نشكرك على ثقتك بنا.</p>
                     <p>مع تحيات فريق الدعم الفني</p>
                 </div>
-            `
+            `,
+            attachments: attachments
         };
         
         try {

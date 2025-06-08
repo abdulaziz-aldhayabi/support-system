@@ -3,6 +3,10 @@ const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const multer = require('multer');
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
 
 admin.initializeApp({
   projectId: 'support-100'
@@ -12,6 +16,13 @@ admin.initializeApp({
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// تبسيط تكوين multer
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
 
 // تكوين Nodemailer
 const transporter = nodemailer.createTransport({
@@ -30,9 +41,16 @@ app.get('/', (req, res) => {
 });
 
 // API endpoint لإرسال النموذج
-app.post('/submit', async (req, res) => {
+app.post('/submit', upload.single('attachment'), async (req, res) => {
     try {
         console.log('تم استلام طلب جديد:', req.body);
+        console.log('الملف المرفق:', req.file ? {
+            fieldname: req.file.fieldname,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        } : 'لا يوجد ملف مرفق');
+        
         const { name, email, phone, category, subject, message } = req.body;
         
         // التحقق من البيانات
@@ -49,8 +67,8 @@ app.post('/submit', async (req, res) => {
         // إنشاء رقم للطلب
         const ticketId = Date.now().toString().slice(-6);
         
-        // حفظ البيانات في Firestore
-        await admin.firestore().collection('tickets').doc(ticketId).set({
+        // إعداد بيانات الطلب
+        const ticketData = {
             id: ticketId,
             name,
             email,
@@ -59,7 +77,33 @@ app.post('/submit', async (req, res) => {
             subject,
             message,
             date: admin.firestore.FieldValue.serverTimestamp()
-        });
+        };
+        
+        // إضافة معلومات الملف المرفق إذا وجد
+        let attachments = [];
+        let tempFilePath;
+        
+        if (req.file) {
+            // حفظ الملف مؤقتًا
+            tempFilePath = path.join(os.tmpdir(), req.file.originalname);
+            fs.writeFileSync(tempFilePath, req.file.buffer);
+            
+            ticketData.attachment = {
+                filename: req.file.originalname,
+                mimetype: req.file.mimetype,
+                size: req.file.size
+            };
+            
+            attachments.push({
+                filename: req.file.originalname,
+                content: req.file.buffer
+            });
+            
+            console.log('تم إرفاق ملف:', req.file.originalname);
+        }
+        
+        // حفظ البيانات في Firestore
+        await admin.firestore().collection('tickets').doc(ticketId).set(ticketData);
         
         console.log(`تم حفظ طلب جديد برقم: ${ticketId}`);
         
@@ -84,9 +128,11 @@ app.post('/submit', async (req, res) => {
                     <p><strong>الموضوع:</strong> ${subject}</p>
                     <p><strong>الرسالة:</strong></p>
                     <p>${message.replace(/\n/g, '<br>')}</p>
+                    ${req.file ? `<p><strong>مرفق:</strong> ${req.file.originalname}</p>` : ''}
                 </div>
             `,
-            replyTo: email
+            replyTo: email,
+            attachments: attachments
         };
         
         // إرسال إيميل تأكيد للمستخدم
@@ -103,11 +149,13 @@ app.post('/submit', async (req, res) => {
                         <p><strong>رقم الطلب:</strong> #${ticketId}</p>
                         <p><strong>الموضوع:</strong> ${subject}</p>
                         <p><strong>تاريخ الاستلام:</strong> ${new Date().toLocaleString('ar-SA')}</p>
+                        ${req.file ? `<p><strong>مرفق:</strong> ${req.file.originalname}</p>` : ''}
                     </div>
                     <p>نشكرك على ثقتك بنا.</p>
                     <p>مع تحيات فريق الدعم الفني</p>
                 </div>
-            `
+            `,
+            attachments: attachments
         };
         
         try {
@@ -121,6 +169,11 @@ app.post('/submit', async (req, res) => {
             const userInfo = await transporter.sendMail(userMailOptions);
             console.log('تم إرسال إيميل المستخدم بنجاح:', userInfo.messageId);
             
+            // حذف الملف المؤقت بعد إرسال الإيميلات
+            if (tempFilePath && fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+            }
+            
             res.status(200).json({ 
                 success: true, 
                 message: 'تم إرسال طلبك بنجاح! سنتواصل معك قريباً.',
@@ -128,6 +181,11 @@ app.post('/submit', async (req, res) => {
             });
         } catch (emailError) {
             console.error('خطأ مفصل في إرسال البريد الإلكتروني:', emailError);
+            
+            // حذف الملف المؤقت في حالة الخطأ
+            if (tempFilePath && fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+            }
             
             // حتى لو فشل إرسال البريد الإلكتروني، نعتبر العملية ناجحة لأننا حفظنا البيانات
             res.status(200).json({ 
@@ -137,7 +195,7 @@ app.post('/submit', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('خطأ عام في معالجة الطلب:', error);
+        console.error('خطأ كامل:', error);
         res.status(500).json({ success: false, message: 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مرة أخرى.' });
     }
 });
